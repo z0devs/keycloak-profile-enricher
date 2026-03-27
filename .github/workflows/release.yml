@@ -1,22 +1,21 @@
 name: Build and Release
 
-# 1. Trigger this workflow ONLY when you push a version tag
 on:
   push:
     tags:
-      - 'v*' # e.g., v1.0.0
+      - 'v*'
 
-# 2. Grant permission for the action to create a Release
 permissions:
   contents: write
 
 jobs:
-  build:
-    name: Build JAR (Keycloak ${{ matrix.keycloak }})
+  # STAGE 1: The Matrix Compatibility Check
+  test:
+    name: Compatibility Check (Keycloak ${{ matrix.keycloak }})
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        keycloak: ["24.0.5", "25.0.6", "26.0.5"]
+        keycloak: ["24.0.0", "25.0.6", "26.0.5"]
 
     steps:
       - uses: actions/checkout@v4
@@ -27,37 +26,32 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
-      - name: Build against Keycloak ${{ matrix.keycloak }}
-        run: mvn clean package -DskipTests -Dkeycloak.version=${{ matrix.keycloak }}
+      # Run tests against the specific matrix version
+      - name: Run Tests
+        run: mvn clean test -Dkeycloak.version=${{ matrix.keycloak }}
 
-      # Rename the jar so the versions don't overwrite each other
-      - name: Rename JAR for matrix version
-        run: mv target/keycloak-profile-enricher-1.0.0.jar target/keycloak-profile-enricher-kc${{ matrix.keycloak }}.jar
-
-      # Temporarily store the jars
-      - name: Store temporary artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: jar-kc${{ matrix.keycloak }}
-          path: target/*.jar
-
-  # 3. The Release Job
+  # STAGE 2: The Universal Build & Release
   release:
-    name: Publish GitHub Release
-    needs: build # This ensures it waits for all 3 builds to finish!
+    name: Build and Publish Universal JAR
+    needs: test # ⚠️ CRITICAL: Wait for ALL matrix tests to pass first!
     runs-on: ubuntu-latest
 
     steps:
-      # Download all 3 jars from the previous step into a 'release-jars' folder
-      - name: Download all JARs
-        uses: actions/download-artifact@v4
-        with:
-          path: release-jars
-          merge-multiple: true
+      - uses: actions/checkout@v4
 
-      # Create the official Release and attach the files
-      - name: Create Release
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven
+
+      # Build the production JAR against the lowest supported version
+      - name: Build Universal JAR
+        run: mvn clean package -DskipTests -Dkeycloak.version=24.0.0 -Drevision=${{ github.ref_name }}
+
+      # Create the official Release
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: release-jars/*.jar
-          generate_release_notes: true # Automatically generates a changelog!
+          files: target/keycloak-profile-enricher-*.jar
+          generate_release_notes: true
