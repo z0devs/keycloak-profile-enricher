@@ -1,0 +1,28 @@
+jobs:
+  build:
+    name: Build JAR (Keycloak ${{ matrix.keycloak }})
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        keycloak: ["24.0.5", "25.0.6", "26.0.5"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Build against Keycloak ${{ matrix.keycloak }}
+        run: mvn clean package -DskipTests -Dkeycloak.version=${{ matrix.keycloak }}
+
+      # Only upload the artifact from one matrix run (26.x = latest)
+      - name: Upload JAR
+        if: matrix.keycloak == '24.0.5'
+        uses: actions/upload-artifact@v4
+        with:
+          name: keycloak-profile-enricher
+          path: target/keycloak-profile-enricher-*.jar

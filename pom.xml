@@ -1,0 +1,164 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+         http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>com.z0.keycloak</groupId>
+  <artifactId>keycloak-profile-enricher</artifactId>
+  <version>1.0.0</version>
+  <packaging>jar</packaging>
+
+  <name>Keycloak Profile Enricher</name>
+  <description>Automatically enriches Keycloak user profiles with external data during registration and first login. Supports Keycloak 24+</description>
+
+  <properties>
+    <java.version>21</java.version>
+    <maven.compiler.source>21</maven.compiler.source>
+    <maven.compiler.target>21</maven.compiler.target>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+
+    <!--
+      Compile against 24.0.0 (lowest supported version).
+      The JAR will work on 24.x, 25.x, 26.x — the SPI interfaces
+      we use have been stable since Keycloak 20.
+      To test against a specific version: mvn package -Dkeycloak.version=26.0.5
+    -->
+    <keycloak.version>24.0.0</keycloak.version>
+  </properties>
+
+  <dependencies>
+
+    <!-- Core SPI: UserModel, RealmModel, KeycloakSession, EventListenerProvider -->
+    <dependency>
+      <groupId>org.keycloak</groupId>
+      <artifactId>keycloak-server-spi</artifactId>
+      <version>${keycloak.version}</version>
+      <scope>provided</scope>
+    </dependency>
+
+    <!-- Private SPI: FormActionFactory, AuthenticatorFactory -->
+    <dependency>
+      <groupId>org.keycloak</groupId>
+      <artifactId>keycloak-server-spi-private</artifactId>
+      <version>${keycloak.version}</version>
+      <scope>provided</scope>
+    </dependency>
+
+    <!-- Services: AbstractOIDCProtocolMapper, OIDCAttributeMapperHelper -->
+    <dependency>
+      <groupId>org.keycloak</groupId>
+      <artifactId>keycloak-services</artifactId>
+      <version>${keycloak.version}</version>
+      <scope>provided</scope>
+    </dependency>
+
+    <!-- Core: IDToken, AccessToken, ProtocolMapperModel -->
+    <dependency>
+      <groupId>org.keycloak</groupId>
+      <artifactId>keycloak-core</artifactId>
+      <version>${keycloak.version}</version>
+      <scope>provided</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>com.fasterxml.jackson.core</groupId>
+      <artifactId>jackson-databind</artifactId>
+      <version>2.16.1</version>
+      <!-- NOT provided — bundle it in the JAR since Keycloak doesn't ship it -->
+      <scope>compile</scope>
+    </dependency>
+
+    <!-- Logging -->
+    <dependency>
+      <groupId>org.jboss.logging</groupId>
+      <artifactId>jboss-logging</artifactId>
+      <version>3.5.3.Final</version>
+      <scope>provided</scope>
+    </dependency>
+
+    <!-- Testing -->
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <version>5.10.0</version>
+      <scope>test</scope>
+    </dependency>
+
+  </dependencies>
+
+  <build>
+    <plugins>
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>3.11.0</version>
+        <configuration>
+          <source>${java.version}</source>
+          <target>${java.version}</target>
+        </configuration>
+      </plugin>
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-jar-plugin</artifactId>
+        <version>3.3.0</version>
+        <configuration>
+          <archive>
+            <manifestEntries>
+              <!-- Documents the minimum required version -->
+              <Keycloak-Min-Version>24.0.0</Keycloak-Min-Version>
+              <Keycloak-Max-Version>99.0.0</Keycloak-Max-Version>
+            </manifestEntries>
+          </archive>
+        </configuration>
+      </plugin>
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <version>3.1.2</version>
+      </plugin>
+
+    </plugins>
+  </build>
+
+  <!--
+    ============================================================
+    MULTI-VERSION TESTING — build & test against specific versions
+    ============================================================
+    mvn package -Dkeycloak.version=24.0.5
+    mvn package -Dkeycloak.version=25.0.6
+    mvn package -Dkeycloak.version=26.0.5
+
+    GitHub Actions matrix uses these profiles automatically.
+    ============================================================
+  -->
+  <profiles>
+
+    <profile>
+      <id>keycloak-24</id>
+      <properties>
+        <keycloak.version>24.0.5</keycloak.version>
+      </properties>
+    </profile>
+
+    <profile>
+      <id>keycloak-25</id>
+      <properties>
+        <keycloak.version>25.0.6</keycloak.version>
+      </properties>
+    </profile>
+
+    <profile>
+      <id>keycloak-26</id>
+      <properties>
+        <keycloak.version>26.0.5</keycloak.version>
+      </properties>
+    </profile>
+
+  </profiles>
+
+</project>
